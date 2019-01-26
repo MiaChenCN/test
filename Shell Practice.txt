@@ -1,0 +1,119 @@
+#!/bin/bash
+#随机给不同用户创建密码
+a=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+for i in `cat /sh/user.txt`
+do
+  useradd $i
+  p=''
+  for m in {1..8}
+  do
+   n=$[RANDOM%62+1]
+   x=`echo $a |cut -b $n`
+   p=$p$x
+   done
+   echo "useradd $i is added and the passwd is $p"  >> /sh/up.txt
+done
+
+
+#!/bin/bash 
+#非交互式远程登陆
+expect << EOF
+spawn ssh 172.25.0.11
+expect "password:" { send "redhat\r" }
+expect "#"  { send "touch /a.txt\r" }
+expect "#"  { send "exit\r" }
+EOF
+
+#!/bin/bash
+#提取用户名和密码
+a=`sed -n '/bash$/s/:.*//p' /etc/passwd`
+for i in $a
+do
+pass1=`grep $i /etc/shadow`
+pass2=${pass1#*:}
+pass=${pass2%%:*}
+echo "$i --> $pass"
+done
+
+#!/bin/bash
+#提取用户名和密码
+a=`sed -n '/bash$/s/:.*//p' /etc/passwd`
+for i in $a
+do
+pass1=`sed -n "/^$i/p" /etc/shadow`
+pass2=${pass1#*:}
+pass=${pass2%%:*}
+echo "$i --> $pass"
+done
+
+#统计登录本机失败的IP及次数
+awk '/Failed/{ip[$11]++}END{for(i in ip){print ip[i],i}}' /var/log/secure
+
+#!/bin/bash 
+#计算机各性能监控
+uptime | awk -F"  " '{print "CPU负载为: "$NF}'
+ifconfig eth0 | awk -F[\(\)] '/RX p/{print"网卡eth0的接收流量为: " $2}'
+free -h | awk '/Mem/{print "内存剩余流量为",$4}'
+df -h | awk '/\/$/{print "磁盘生于容量为",$4}'
+awk '{i++}END{print "当前计算机账户共",i,"个"}' /etc/passwd
+who |awk '{j++}END{print "当前登录账户共",j,"个"}'
+ps -aux | awk '{k++}END{print "当前开启的进程共",k,"个"}'
+echo "本机已安装的软件包数量为`rpm -qa | wc -l`个" 
+
+#!/bin/bash
+#Nginx编译安装
+a=`yum repolist  | awk '/^repolist/{print $2}'|sed 's/,//'`
+#a=4305(normal)
+if [ $a -eq 0 ]; then
+   echo " yum not available"
+   exit
+fi
+   yum -y install gcc openssl-devel pcre-devel
+   tar -xf nginx-1.12.2.tar.gz
+   cd nginx-1.12.2
+   ./configure
+   make
+   make install
+
+
+#!/bin/bash
+#查看软件状态信息
+case $1 in
+start)
+      /usr/local/nginx/sbin/nginx;;
+restart)
+      /usr/local/nginx/sbin/nginx -s stop
+      /usr/local/nginx/sbin/nginx;;
+stop)
+     /usr/local/nginx/sbin/nginx -s stop;;
+status)
+     netstat -ntulp | grep -q nginx
+     if [ $? -eq 0 ]; then
+       echo " nginx is up"
+     else
+       echo " nginx is down"
+     fi ;;
+*)
+    echo " please enter start, restart,stop or status"
+
+esac
+
+#!/bin/bash
+#查找有效用户密码输入失败的远程记录，$11为IP地址
+grep Failed /var/log/secure | grep -v invalid |awk '/Failed/{ip[$11]++}END{for (i in ip)print ip[i]"times","loggin ip address is "i}' 
+#查找远程登录用户名错误；$10为IP地址；超过三次的输出结果
+awk 'BEGIN{print "Times\tIP-address"}/Invalid/{ip[$10]++}END{for(i in ip){print ip[i]"\t"i}}' /var/log/secure  | awk '$1>3{print $1,$2}'
+
+#!/bin/bash
+#调用函数显示进度条
+jindu(){
+while :
+do
+echo -ne '\033[45m \033[0m'
+sleep 0.1
+done
+}
+jindu &
+cp -r  $1 $2
+kill $!
+
